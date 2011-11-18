@@ -11,7 +11,6 @@ Usage:
 
 import json
 import sys
-import os
 from caral.argopts    import ArgOpts
 
 __version__ = '0.1.0'
