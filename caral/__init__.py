@@ -2,14 +2,13 @@
 caral: A test runner and DSL testing framework for writing readable, 
 descriptive tests.
 
-Version: 0.1.0
+Version: 0.1.1
 
 Usage:
     caral [options] 
 
 """
 
-import json
 import sys
 from caral.argopts    import ArgOpts
 
@@ -38,27 +37,22 @@ class CaralCommands(object):
 
 
     def parse_args(self, argv):
-        options = ['no-capture', '-s', 'fail', '-x', '-t', '-d', '--debug',
-                   'dots', 'traceback', 'tracebacks', 'describe', 'it',
-                   '--collect-match', '--collect-ci']
-        coverage_options  = ['--show-missing', '--cover-dir', '--cover-report',
-                            'cover']
-        profiling_options = ['-p', 'profile']
-        options.extend(coverage_options)
-        options.extend(profiling_options)
+        options = ['rm', 'upload', 'fetch']
 
         args = ArgOpts(options)
         args.parse_args(argv)
         
         if args.catches_help():
-            self.msg(self.caral_help)
+            self.msg(__doc__)
 
         if args.catches_version():
             message = "caral version %s" % __version__
             self.msg(message)
 
         if args.match:
+            # don't do anything yet
+            self.msg(__doc__)
 
-            # Debugging option
-            if args.has(['--debug']):
-                self.config['debug'] = True
+        else:
+            self.msg(__doc__)
+
