@@ -25,5 +25,3 @@ from caral import CaralCommands
 
 if __name__ == "__main__":
     CaralCommands()
-
-
