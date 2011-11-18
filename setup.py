@@ -5,9 +5,7 @@ scripts = ['bin/caral']
 
 long_description = """ caral - A flexible PyPi mirror """
 
-requirements = [
-              "BeautifulSoup",
-            ]
+requirements = [ "BeautifulSoup", ]
 
 
 setup(
