@@ -1,5 +1,6 @@
 from threading          import Thread
 from BeautifulSoup      import BeautifulSoup
+import re
 import os
 import urlparse
 import urllib
@@ -32,7 +33,7 @@ class Synchronizer(Thread):
         try:
             browse = BrowsePyPi(name, directory)
             browse.grab_all_packages()
-            logger.info("grabbed all packages")
+            logger.info("grabbed all packages for %s" % name)
         except Exception, error:
             logger.exception("thread unable to grab packages: %s" % error)
 
@@ -121,9 +122,13 @@ class BrowsePyPi(object):
         return False
 
     def clean_download_url(self, url):
+        valid = re.compile(r'[-a-z0-9.]+\.(tar|tar.gz|zip|tgz)$', re.IGNORECASE)
         is_valid = not self.should_skip_href(url)
         if is_valid:
-            return url.split('/')[-1].split('#')[0]
+            end_part = url.split('/')[-1].split('#')[0]
+            if valid.match(end_part):
+                return end_part
+        logger.warning("url is not a valid for fetching: %s" % url)
         return False
 
     def grab_all_packages(self):
@@ -169,44 +174,14 @@ class BrowsePyPi(object):
                 directory = "%s/%s" % (self.save_to_dir, version)
                 logger.debug("saving to directory: %s" % directory)
                 urllib.urlretrieve(package_url, directory)
-            except Exception, e:
+            except Exception:
                 logger.exception("Skipping bad package (could not fetch url): %s" % version)
-
-
-    def grab_package(self):
-        """
-        Grabs the latest and greates package
-        """
-        links = self.base_link()
-        link_list = {}
-
-        for link in links:
-            href            = link.get('href')
-            pkg             = link.text
-            if link.get('rel') == "homepage" or 'tip.gz' in href or 'tar.gz' not in href:
-                continue
-            if 'index.html' in pkg or 'http' in pkg:
-                continue
-            if href.startswith('../../'):
-                href = urlparse.urljoin(self.main_address, href.strip('../..'))
-
-            link_list.update({pkg : href})
-
-        # Some packages don't have source files in PyPi
-        if not link_list:
-            raise PyPiNotFound
-
-        version = self.latest_version(link_list)
-
-        if not os.path.exists(self.save_to_dir):
-            os.mkdir(self.save_to_dir)
-        package_url = self.real_url(link_list[version])
-        urllib.urlretrieve(package_url, "%s/%s" % (self.save_to_dir, version))
 
 
     def latest_version(self, urls):
         keys = sorted(urls.keys(), reverse=True)
         return keys[0]
+
 
 def set_logging(config=None):
     config = config or {
