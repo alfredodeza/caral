@@ -1,4 +1,4 @@
-from pecan                    import expose, request, response
+from pecan import expose, request, response
 
 
 
@@ -25,10 +25,6 @@ class ErrorsController(object):
 
     @expose('json')
     def unable(self):
-        """Unable to continue because of current state.
-        Usually meant for payment instances that need to 
-        be in a certain condition before modification occurs.
-        """
         response.status = 400
         return {'message':'file uploaded is probably not tar.gz'}
 
@@ -38,7 +34,6 @@ class ErrorsController(object):
         """
         Unable to continue because the server could not fulfill 
         the request.
-        Most of the time is due to a third party request like CIM.
         """
         response.status = 501
         return {'message':'server was not able to complete this request'}
