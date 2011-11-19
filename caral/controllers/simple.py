@@ -22,15 +22,14 @@ class DownloadController(object):
             self.not_found = True
             logger.debug('redirecting to PyPi since caral does not have package %s' % self.name)
             redirect('http://pypi.python.org/simple/%s' % self.name)
-        finally:
-            if self.not_found:
-                logger.debug('spawning a thread to wget %s' % self.name)
-                self.spawn_wget()
+
+        # Always fire a thread to get packages
+        logger.debug('spawning a thread to wget %s' % self.name)
+        self.spawn_wget()
 
         return dict(
             project_name = self.name,
-            packages     = self.files
-            )
+            packages     = self.files)
 
 
     def spawn_wget(self):
