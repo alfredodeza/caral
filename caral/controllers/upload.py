@@ -31,6 +31,3 @@ class UploadController(object):
                 f.write(file_obj.getvalue())
             except AttributeError:
                 f.write(file_obj.read())
-
-
-
