@@ -79,7 +79,7 @@ class BrowsePyPi(object):
     def __init__(self, package_name, save_to_dir):
         self.package_name = package_name
         self.main_address = "http://pypi.python.org/"
-        self.save_to_dir = save_to_dir
+        self.save_to_dir  = save_to_dir
 
 
     def real_url(self, url):
@@ -90,8 +90,8 @@ class BrowsePyPi(object):
     def base_link(self):
         try:
             address = self.real_url("http://pypi.python.org/simple/%s" % self.package_name)
-            html = urllib2.urlopen(address).read()
-            soup = BeautifulSoup(html)
+            html    = urllib2.urlopen(address).read()
+            soup    = BeautifulSoup(html)
         except:
             raise PyPiNotFound
 
@@ -121,6 +121,7 @@ class BrowsePyPi(object):
                 return True
         return False
 
+
     def clean_download_url(self, url):
         valid = re.compile(r'[-a-z0-9.]+\.(tar|tar.gz|zip|tgz)$', re.IGNORECASE)
         is_valid = not self.should_skip_href(url)
@@ -130,6 +131,7 @@ class BrowsePyPi(object):
                 return end_part
         logger.warning("url is not a valid for fetching: %s" % url)
         return False
+
 
     def grab_all_packages(self):
         """
@@ -144,22 +146,20 @@ class BrowsePyPi(object):
 
             if not pkg:
                 continue
-            
             if link.get('rel') == "homepage":
                 logger.debug('skipping link: %s' % link)
-                continue
-            if self.should_skip_href(href):
-                logger.debug('skipping link, bad href: %s' % href)
                 continue
             if self.should_skip_pkg(pkg):
                 logger.debug('skipping link, bad pkg: %s' % pkg)
                 continue
-
             if href.startswith('../../'):
                 href = urlparse.urljoin(self.main_address, href.strip('../..'))
 
-            pkg = self.clean_download_url(href)
             link_list.update({pkg : href})
+
+        for k, v in link_list.items():
+            logger.debug('package %s, link: %s' % (k, v))
+
 
         # Some packages don't have source files in PyPi
         if not link_list:
@@ -172,8 +172,9 @@ class BrowsePyPi(object):
             try:
                 package_url = self.real_url(link_list[version])
                 directory = "%s/%s" % (self.save_to_dir, version)
-                logger.debug("saving to directory: %s" % directory)
-                urllib.urlretrieve(package_url, directory)
+                if not self.file_already_exists(version, self.save_to_dir):
+                    logger.debug("saving to directory: %s" % directory)
+                    urllib.urlretrieve(package_url, directory)
             except Exception:
                 logger.exception("Skipping bad package (could not fetch url): %s" % version)
 
@@ -182,6 +183,12 @@ class BrowsePyPi(object):
         keys = sorted(urls.keys(), reverse=True)
         return keys[0]
 
+
+    def file_already_exists(self, filename, directory):
+        if filename in os.listdir(directory):
+            logger.debug("Skipping: %s already exists in: %s" % (filename, directory))
+            return True
+        return False
 
 def set_logging(config=None):
     config = config or {
