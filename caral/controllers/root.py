@@ -8,7 +8,8 @@ from caral.controllers.upload                   import UploadController
 
 class RootController(object):
 
-
+# XXX This would take care of authentication, not sure how to
+# make it conditional depending on config - so no auth just yet
 #    @classmethod
 #    def check_permissions(cls):
 #        # Make sure we have an Authorization header
