@@ -102,17 +102,9 @@ class BrowsePyPi(object):
             logger.exception(e)
 
 
-    def should_skip_href(self, href):
-        whitelist = ['.tar', '.tar.bz2', '.tar.gz', '.zip', '.tgz']
-        for w in whitelist:
-            if w in href:
-                return False
-        return True
-
-
     def should_skip_pkg(self, pkg):
         blacklist = ['.org', '.com', '.net', '.htm']
-
+        logger.debug('pkg is ==> %s' % pkg)
         for b in blacklist:
             if b in pkg:
                 return True
@@ -121,13 +113,17 @@ class BrowsePyPi(object):
         return False
 
 
-    def clean_download_url(self, url):
-        valid = re.compile(r'[-a-z0-9.]+\.(tar|tar.gz|zip|tgz)$', re.IGNORECASE)
-        is_valid = not self.should_skip_href(url)
-        if is_valid:
-            end_part = url.split('/')[-1].split('#')[0]
-            if valid.match(end_part):
-                return end_part
+    def url_end_part(self, url):
+        if url.endswith('/'): # handle trailing slashes
+            url = url[:-1]
+        return url.split('/')[-1].split('#')[0]
+
+
+    def package_from_url(self, url):
+        end_part = self.url_end_part(url)
+        valid    = re.compile(r'[-a-z0-9.]+\.(tar|tar.gz|zip|tgz|bz2)$', re.IGNORECASE)
+        if valid.match(end_part):
+            return end_part
         logger.warning("url is not a valid for fetching: %s" % url)
         return False
 
@@ -141,7 +137,7 @@ class BrowsePyPi(object):
 
         for link in links:
             href = link.get('href')
-            pkg = self.clean_download_url(href)
+            pkg  = self.package_from_url(href)
 
             if not pkg:
                 continue
