@@ -115,10 +115,13 @@ class BrowsePyPi(object):
 
 
     def should_skip_pkg(self, pkg):
-        blacklist = ['http', '.html', '.org', '.com', '.net', '.htm']
+        blacklist = ['.org', '.com', '.net', '.htm']
+
         for b in blacklist:
             if b in pkg:
                 return True
+        if "://" in pkg:
+            return True
         return False
 
 
