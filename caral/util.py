@@ -152,10 +152,6 @@ class BrowsePyPi(object):
 
             link_list.update({pkg : href})
 
-        for k, v in link_list.items():
-            logger.debug('package %s, link: %s' % (k, v))
-
-
         # Some packages don't have source files in PyPi
         if not link_list:
             raise PyPiNotFound
@@ -184,6 +180,7 @@ class BrowsePyPi(object):
             logger.debug("Skipping: %s already exists in: %s" % (filename, directory))
             return True
         return False
+
 
 def set_logging(config=None):
     config = config or {

@@ -83,3 +83,16 @@ describe "browsing PyPi index and grabs package files":
         href = "http://example.com/file.zip/"
 
         assert self.browse.package_from_url(href) == 'file.zip'
+
+    it "removes trailing slashes":
+        url = "http://example.com/bar/"
+        assert self.browse.url_end_part(url) == 'bar'
+
+    it "removes hashes from checksums from urls":
+        url = "http://example.com/bar/package.tar#md5sdaf90987asdf0978"
+        assert self.browse.url_end_part(url) == 'package.tar'
+
+    it "removes hashes from checksums from urls with trailing slashes":
+        url = "http://example.com/bar/package.tar#md5sdaf90987asdf0978/"
+        assert self.browse.url_end_part(url) == 'package.tar'
+
