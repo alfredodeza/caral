@@ -44,7 +44,7 @@ describe "browsing the PyPi index skips some files":
         assert self.browse.should_skip_pkg(pkg) is False
 
 
-describe "browsing PyPi index skips some urls":
+describe "browsing PyPi index and grabs package files":
 
     before each:
         self.browse = util.BrowsePyPi('', '')
@@ -52,36 +52,34 @@ describe "browsing PyPi index skips some urls":
     it "does not skip tar.gz urls":
         href = "http://example.com/file.tar.gz"
 
-        assert self.browse.should_skip_href(href) is False
+        assert self.browse.package_from_url(href) == 'file.tar.gz'
 
     it "does not skip .tar.bz2 urls":
         href = "http://example.com/file.tar.bz2"
 
-        assert self.browse.should_skip_href(href) is False
+        assert self.browse.package_from_url(href) == 'file.tar.bz2'
 
     it "does not skip .tar urls":
         href = "http://example.com/file.tar"
 
-        assert self.browse.should_skip_href(href) is False
+        assert self.browse.package_from_url(href) == 'file.tar'
 
     it "does not skip .zip urls":
         href = "http://example.com/file.zip"
 
-        assert self.browse.should_skip_href(href) is False
+        assert self.browse.package_from_url(href) == 'file.zip'
 
     it "does not skip .tgz urls":
         href = "http://example.com/file.tgz"
 
-        assert self.browse.should_skip_href(href) is False
+        assert self.browse.package_from_url(href) == 'file.tgz'
 
     it "does skip non compressed file urls":
         href = "http://example.com/file.bar"
 
-        assert self.browse.should_skip_href(href) is True
+        assert self.browse.package_from_url(href) is False
 
     it "does not skip when is valid but has trailing slashes":
         href = "http://example.com/file.zip/"
 
-        assert self.browse.should_skip_href(href) is False
-
-
+        assert self.browse.package_from_url(href) == 'file.zip'
