@@ -103,15 +103,11 @@ class BrowsePyPi(object):
 
 
     def should_skip_href(self, href):
-        whitelist = ['.tar.gz', '.zip', '.tgz']
-        blacklist = ['tip.gz']
+        whitelist = ['.tar', '.tar.bz2', '.tar.gz', '.zip', '.tgz']
         for w in whitelist:
             if w in href:
                 return False
-        for b in blacklist:
-            if b in href:
-                return True
-        return False
+        return True
 
 
     def should_skip_pkg(self, pkg):
