@@ -8,7 +8,33 @@ import urllib2
 import Queue
 import logging
 
+from pecan import conf
 logger = logging.getLogger(__name__)
+
+pkg_queue = Queue.Queue()
+
+
+try:
+    from . import pkg_cache
+    PKG_CACHE = pkg_cache.CACHE
+except (ImportError, AttributeError):
+    dump_cache(new=True)
+    PKG_CACHE = {}
+
+
+def dump_cache(new=False):
+    if new:
+        package_cache = {}
+    else:
+        package_cache = PKG_CACHE
+    this_dir = os.path.abspath(os.path.dirname(__file__))
+    cache_file = os.path.join(this_dir, 'pkg_cache.py')
+    with open(cache_file, 'w') as dump:
+        dump.write('CACHE = ' + repr(package_cache) + '\n')
+    logger.debug('')
+    logger.debug(repr(package_cache))
+    logger.debug('cache has been dumped to: %s' % cache_file)
+
 
 class Synchronizer(Thread):
     """Checks the queue every n minutes and pushes
@@ -43,88 +69,142 @@ class RequestParser(object):
     """Receives a dictionary with the request and arranges
     the data to pass to the Queue instance"""
 
-
     def __init__(self, test=False):
         self.queue = Queue.Queue()
-        if not test:
+        for t in range(10):
+            logger.debug("Spawned a synchronizer thread [%s]" % t)
             self.spawn_sync()
-
 
     def push_to_queue(self, metadata):
         """Submits a dictionary of stats to the queue"""
-        self.queue.put(metadata)
         logger.debug("pushing metadata to the queue")
-
+        logger.debug("queue size is %s" % pkg_queue.qsize())
+        pkg_queue.put(metadata)
 
     def spawn_sync(self):
         """Creates a thread that will fetch data from the queue"""
-        sync = Synchronizer(self.queue)
+        sync = Synchronizer(pkg_queue)
         sync.setDaemon(True)
         sync.start()
-        logger.debug("spawned a thread")
-
-
 
 
 class PyPiNotFound(Exception):
+
     def __init__(self):
         message = "Package not found"
         Exception.__init__(self, message)
 
 
-
 class BrowsePyPi(object):
-
 
     def __init__(self, package_name, save_to_dir):
         self.package_name = package_name
         self.main_address = "http://pypi.python.org/"
         self.save_to_dir  = save_to_dir
 
-
     def real_url(self, url):
+        logger.debug('Attempting to verify url: %s' % url)
+        if url.startswith('//'):
+            url = 'http://' + url.lstrip('//')
         check_url = urllib.urlopen(url)
-        return check_url.url
-
+        try:
+            return check_url.url
+        except IOError, exc:
+            logger.exception('Not able to verify url')
+            return False
 
     def base_link(self):
-        try:
-            address = self.real_url("http://pypi.python.org/simple/%s" % self.package_name)
-            html    = urllib2.urlopen(address).read()
-            soup    = BeautifulSoup(html)
-        except:
+        package_name = self.real_name(self.package_name)
+        for mirror in conf.pypi_urls:
+            try:
+                failed = False
+                address = self.real_url("%s%s" % (mirror, package_name))
+                logger.debug('attempting to grab from address: %s' % address)
+                html    = urllib2.urlopen(address).read()
+                if self.not_modified(package_name, html, mirror):
+                    logger.info('no new packages found, skipping: %s' % address)
+                    continue
+                soup    = BeautifulSoup(html)
+                try:
+                    divs =  soup.findAll('a')
+                    return divs
+                except IOError, e:
+                    logger.exception(e)
+
+            except:
+                logger.exception('Could not get to mirror: %s' % mirror)
+                failed = True
+                continue
+        if failed:
             raise PyPiNotFound
+        return []
 
-        try:
-            divs =  soup.findAll('a')
-            return divs
-        except IOError, e:
-            logger.exception(e)
+    # XXX Move this into its own thing
+    def create_hash(self, name, html):
+        import hashlib
+        return hashlib.sha224(html).hexdigest()
 
+    def not_modified(self, name, html, mirror):
+        new_hash = self.create_hash(name, html)
+        existing_hash = PKG_CACHE.get(mirror, {}).get(name)
+        if new_hash == existing_hash:
+            return True
+        logger.info('package %s with hash %s has dated hash: %s' % (name, new_hash, existing_hash))
+        PKG_CACHE.setdefault(mirror, {})[name] = new_hash
+        dump_cache()
+        return False
+
+    def real_name(self, name):
+        for mirror in conf.pypi_urls:
+            try:
+                failed = False
+                address = self.real_url("%s" % mirror)
+                logger.debug('attempting to find similar names on: %s' % address)
+                html = urllib2.urlopen(address).read()
+                soup = BeautifulSoup(html)
+                try:
+                    divs = soup.findAll('a')
+                    for div in divs:
+                        if div.text == name:
+                            return name
+                    for div in divs:
+                        if div.text.lower() == name.lower():
+                            return div.text
+                except IOError, e:
+                    logger.exception(e)
+
+            except Exception:
+                logger.exception('could not find name on: %s' % mirror)
+                failed = True
+                continue
+        if failed:
+            raise PyPiNotFound
 
     def should_skip_pkg(self, pkg):
         blacklist = ['.org', '.com', '.net', '.htm']
         logger.debug('pkg is ==> %s' % pkg)
         for b in blacklist:
-            if b in pkg:
+            if pkg.endswith(b):
                 return True
         if "://" in pkg:
             return True
         return False
 
-
     def url_end_part(self, url):
+        if url.startswith('//'):
+            logger.warning("swapping // for http:// in invalid url")
+            url = 'http://' + url.lstrip('//')
         if url.endswith('/'): # handle trailing slashes
             url = url[:-1]
         return url.split('/')[-1].split('#')[0]
 
-
     def package_from_url(self, url):
         end_part = self.url_end_part(url)
-        valid    = re.compile(r'[-a-z0-9.]+\.(tar|tar.gz|zip|tgz|bz2)$', re.IGNORECASE)
+        valid    = re.compile(r'[-a-z0-9._]+\.(tar|tar.gz|zip|tgz|bz2)$', re.IGNORECASE)
         if valid.match(end_part):
             return end_part
-        logger.warning("url is not a valid for fetching: %s" % url)
+        logger.warning("url is not valid for fetching: %s" % url)
+        logger.warning("end part was: %s" % end_part)
         return False
 
 
@@ -182,36 +262,34 @@ class BrowsePyPi(object):
         return False
 
 
-def set_logging(config=None):
-    config = config or {
-                        'log_enable'  : True,
-                        'log_path'    : '/var/log/caral/caral.log',
-                        'log_level'   : 'DEBUG',
-                        'log_format'  : '%(asctime)s %(levelname)s %(name)s %(message)s',
-                        'log_datefmt' : '%H:%M:%S' }
-    enabled  = config['log_enable']
-    log_path = config['log_path']
+def real_name(name):
+    """
+    Attempt to match the real name of a package in a url. It is often the case
+    that you might be dealing with a camel cased name but mirrors or installers
+    will fix this problem for you by choosing the right one.
+    """
+    for mirror in conf.pypi_urls:
+        try:
+            address = mirror
+            logger.debug('attempting to find similar names on: %s' % address)
+            html = urllib2.urlopen(address).read()
+            soup = BeautifulSoup(html)
+            logger.debug('read pkg list from %s' % address)
+            try:
+                divs = soup.findAll('a')
+                for div in divs:
+                    if div.text == name:
+                        logger.info('name of pkg exists: %s' % div.text)
+                        return name
+                for div in divs:
+                    if div.text.lower() == name.lower():
+                        logger.info('real name of pkg is: %s' % div.text)
+                        return div.text
+            except IOError:
+                logger.exception('Unable to parse divs from %s' % address)
 
-    if os.path.isdir(log_path):
-        log_path = os.path.join(log_path, 'caral.log')
-
-    levels = {
-            'debug' : logging.DEBUG,
-            'info'  : logging.INFO
-    }
-
-    level = levels.get(config['log_level'].lower())
-    log_format = config['log_format']
-    datefmt    = config['log_datefmt']
-
-    logging.basicConfig(
-            level    = level,
-            format   = log_format,
-            datefmt  = datefmt,
-            filename = log_path,
-            filemode = 'a'
-    )
-
-
-    if not enabled or log_path is None:
-        logging.disable(logging.CRITICAL)
+        except Exception:
+            logger.exception('could not find name on: %s' % mirror)
+            continue
+    # if everything fails, just return what we got initially
+    return name
