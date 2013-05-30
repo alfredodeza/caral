@@ -4,3 +4,5 @@
 build
 dist
 *.egg*
+pkg_cache.py
+public
