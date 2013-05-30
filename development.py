@@ -1,11 +1,11 @@
 from caral.controllers.root  import RootController
 
 import caral
-caral.util.set_logging()
+#caral.util.set_logging()
 
 app = {
-    'root'          : RootController,
-    'modules'       : [caral],
+    'root': 'caral.controllers.root.RootController',
+    'modules': ['caral'],
     'static_root'   : '%(confdir)s/caral/public',
     'template_path' : '%(confdir)s/caral/templates',
     'reload'        : True,
@@ -13,10 +13,31 @@ app = {
 }
 
 server = dict(
-    port    = '80',
+    port    = '9999',
     host    = '0.0.0.0'
 )
 
 engine      = 'sqlite:///caral.db'
 ro_engine   = 'sqlite:///caral.db'
 
+logging = {
+    'loggers': {
+        'root' : {'level': 'DEBUG', 'handlers': ['console']},
+        'caral': {'level': 'DEBUG', 'handlers': ['console']}
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        }
+    },
+    'formatters': {
+        'simple': {
+            'format': ('%(asctime)s %(levelname)-5.5s [%(name)s]'
+                       '[%(threadName)s] %(message)s')
+        }
+    }
+}
+
+pypi_urls = ['http://cheese.yougov.net/simple/']
