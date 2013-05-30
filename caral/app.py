@@ -7,6 +7,7 @@ def setup_app(config):
         config.app.root,
         static_root   = config.app.static_root,
         template_path = config.app.template_path,
+        logging       = config.logging,
         debug         = config.app.debug,
         hooks         = [RequestViewerHook()]
     )
