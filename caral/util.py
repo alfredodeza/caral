@@ -106,8 +106,8 @@ class BrowsePyPi(object):
         logger.debug('Attempting to verify url: %s' % url)
         if url.startswith('//'):
             url = 'http://' + url.lstrip('//')
-        check_url = urllib.urlopen(url)
         try:
+            check_url = urllib.urlopen(url)
             return check_url.url
         except IOError, exc:
             logger.exception('Not able to verify url')
